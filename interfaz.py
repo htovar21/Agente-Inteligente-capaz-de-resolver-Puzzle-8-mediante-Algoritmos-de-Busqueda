@@ -2,6 +2,8 @@ import pygame
 import sys
 from BFS import goal_state, generate_solvable_initial, bfs
 from Astar_Manhattan import astar
+import time
+from tabulate import tabulate  # <-- Importar tabulate
 
 pygame.init()
 pygame.font.init()
@@ -24,11 +26,19 @@ TEXT_COLOR = (255, 255, 255)
 BUTTON_COLOR = (100, 100, 100)
 BUTTON_HOVER_COLOR = (150, 150, 150)
 
-# Botones
 btn_change = pygame.Rect(30, 370, 100, 50)
 btn_start = pygame.Rect(170, 370, 100, 50)
 btn_restart = pygame.Rect(30, 370, 100, 50)
 btn_astar = pygame.Rect(170, 370, 100, 50)
+
+def print_comparison_table(bfs_stats, astar_stats):
+    headers = ["Algoritmo", "Nodos Expandidos", "Longitud Solución", "Tiempo (s)"]
+    data = [
+        ["BFS", bfs_stats[0], bfs_stats[1], f"{bfs_stats[2]:.4f}"],
+        ["A*", astar_stats[0], astar_stats[1], f"{astar_stats[2]:.4f}"],
+    ]
+    table = tabulate(data, headers, tablefmt="fancy_grid", numalign="right")
+    print("\n" + table + "\n")
 
 def draw_state(state):
     screen.fill(BG_COLOR)
@@ -58,6 +68,18 @@ def draw_button(rect, text, mouse_pos):
     text_rect = text_surf.get_rect(center=rect.center)
     screen.blit(text_surf, text_rect)
 
+def draw_comparison(bfs_stats, astar_stats):
+    # Recibe tuplas: (nodes_expanded, solution_length, time_elapsed)
+    y_start = 150
+    line_height = 30
+    texts = [
+        "Comparación de algoritmos:",
+        f"BFS: Nodos expandidos = {bfs_stats[0]}, Longitud = {bfs_stats[1]}, Tiempo = {bfs_stats[2]:.4f} s",
+        f"A*: Nodos expandidos = {astar_stats[0]}, Longitud = {astar_stats[1]}, Tiempo = {astar_stats[2]:.4f} s",
+    ]
+    for i, text in enumerate(texts):
+        draw_text(text, y_start + i * line_height)
+
 def main():
     clock = pygame.time.Clock()
     initial_state = None
@@ -65,6 +87,11 @@ def main():
     step_idx = 0
     mode = "menu"
     algorithm = "BFS"
+
+    astar_executed = False
+    bfs_stats = None  # (nodes_expanded, solution_length, time_elapsed)
+    astar_stats = None
+    comparing = False  # modo comparación
 
     running = True
     while running:
@@ -79,15 +106,21 @@ def main():
                 if mode == "menu":
                     if btn_change.collidepoint(event.pos):
                         initial_state = generate_solvable_initial(goal_state)
+                        astar_executed = False
+                        comparing = False
+                        bfs_stats = None
+                        astar_stats = None
                     elif btn_start.collidepoint(event.pos):
                         if not initial_state:
                             initial_state = generate_solvable_initial(goal_state)
-                        solution = bfs(initial_state, goal_state)
+                        solution, nodes_exp, sol_len, time_elapsed = bfs(initial_state, goal_state)
+                        bfs_stats = (nodes_exp, sol_len, time_elapsed)
                         algorithm = "BFS"
                         if solution:
-                            print(f"[BFS] Solución encontrada en {len(solution)-1} pasos.")
+                            print(f"[BFS] Solución encontrada en {sol_len} pasos.")
                             mode = "solving"
                             step_idx = 0
+                            comparing = False
                         else:
                             print("[BFS] No se encontró solución.")
                 elif mode == "finished":
@@ -96,18 +129,34 @@ def main():
                         solution = []
                         step_idx = 0
                         mode = "menu"
+                        astar_executed = False
+                        comparing = False
+                        bfs_stats = None
+                        astar_stats = None
                     elif btn_astar.collidepoint(event.pos):
-                        if initial_state:
-                            solution = astar(initial_state, goal_state)
-                            algorithm = "A*"
-                            if solution:
-                                print(f"[A*] Solución encontrada en {len(solution)-1} pasos.")
-                                mode = "solving"
-                                step_idx = 0
+                        if not astar_executed:
+                            if initial_state:
+                                result = astar(initial_state, goal_state)
+                                if result:
+                                    solution, nodes_exp, sol_len, time_elapsed = result
+                                    astar_stats = (nodes_exp, sol_len, time_elapsed)
+                                    algorithm = "A*"
+                                    print(f"[A*] Solución encontrada en {sol_len} pasos.")
+                                    mode = "solving"
+                                    step_idx = 0
+                                    astar_executed = True
+                                    comparing = False
+                                else:
+                                    print("[A*] No se encontró solución.")
                             else:
-                                print("[A*] No se encontró solución.")
+                                print("⚠️ Debes ejecutar BFS primero para establecer el estado inicial.")
                         else:
-                            print("⚠️ Debes ejecutar BFS primero para establecer el estado inicial.")
+                            # Aquí activamos modo comparar y mostramos estadísticas en consola
+                            if bfs_stats and astar_stats:
+                                comparing = True
+                                print_comparison_table(bfs_stats, astar_stats)
+                            else:
+                                print("⚠️ Ejecuta BFS y A* primero para comparar.")
 
         # DIBUJADO
         if mode == "menu":
@@ -118,6 +167,7 @@ def main():
             draw_text("Estado inicial", HEIGHT - 115)
             draw_button(btn_change, "Cambiar", mouse_pos)
             draw_button(btn_start, "Comenzar", mouse_pos)
+            comparing = False
 
         elif mode == "solving":
             if step_idx < len(solution):
@@ -137,7 +187,14 @@ def main():
             draw_text(f"Búsqueda {'No Informada BFS' if algorithm == 'BFS' else 'Informada A*'}", 20)
             draw_text(f"Estado Meta - {len(solution) - 1} pasos", HEIGHT - 115)
             draw_button(btn_restart, "Reiniciar", mouse_pos)
-            draw_button(btn_astar, "A*", mouse_pos)
+
+            if astar_executed and not comparing:
+                draw_button(btn_astar, "Comparar", mouse_pos)
+            elif not astar_executed:
+                draw_button(btn_astar, "A*", mouse_pos)
+
+            if comparing:
+                draw_comparison(bfs_stats, astar_stats)
 
         pygame.display.flip()
 

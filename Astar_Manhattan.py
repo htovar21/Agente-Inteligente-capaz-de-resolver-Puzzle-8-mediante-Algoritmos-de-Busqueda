@@ -1,4 +1,5 @@
 import heapq
+import time
 
 goal_state = (1, 2, 3,
               4, 5, 6,
@@ -36,14 +37,21 @@ def get_neighbors(state):
     return neighbors
 
 def astar(initial_state, goal_state):
+    start_time = time.time()
     frontier = []
     heapq.heappush(frontier, (0 + manhattan_distance(initial_state), 0, initial_state, []))
     explored = set()
+    nodes_expanded = 0
 
     while frontier:
         f, cost, state, path = heapq.heappop(frontier)
+        nodes_expanded += 1
         if state == goal_state:
-            return path + [(state, None)]
+            end_time = time.time()
+            solution_path = path + [(state, None)]
+            solution_length = len(solution_path) - 1
+            time_elapsed = end_time - start_time
+            return solution_path, nodes_expanded, solution_length, time_elapsed
         explored.add(state)
 
         for neighbor, move in get_neighbors(state):
@@ -54,4 +62,5 @@ def astar(initial_state, goal_state):
             priority = new_cost + manhattan_distance(neighbor)
             heapq.heappush(frontier, (priority, new_cost, neighbor, new_path))
 
-    return None  # No solución
+    end_time = time.time()
+    return None, nodes_expanded, 0, end_time - start_time

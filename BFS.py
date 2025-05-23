@@ -1,5 +1,6 @@
 import random
 from collections import deque
+import time
 
 goal_state = (1, 2, 3,
               8, 0, 4,
@@ -30,9 +31,9 @@ def get_neighbors_with_moves(state):
 
     moves = []
     if row > 0: moves.append((-3, "Arriba"))    # arriba
-    if row < 2: moves.append((3, "Abajo"))   # abajo
-    if col > 0: moves.append((-1, "Izquierda"))  # izquierda
-    if col < 2: moves.append((1, "Derecha"))  # derecha
+    if row < 2: moves.append((3, "Abajo"))      # abajo
+    if col > 0: moves.append((-1, "Izquierda")) # izquierda
+    if col < 2: moves.append((1, "Derecha"))    # derecha
 
     for move, move_name in moves:
         new_pos = zero_pos + move
@@ -43,18 +44,22 @@ def get_neighbors_with_moves(state):
 
 def bfs(start, goal):
     if start == goal:
-        return [(start, None)]
+        return [(start, None)], 0, 0, 0.0  # path, nodes_expanded, solution_length, time_elapsed
 
+    start_time = time.time()
     queue = deque([start])
     visited = set([start])
     parent = {start: (None, None)}  # estado: (padre, movimiento)
+    nodes_expanded = 0
 
     while queue:
         current = queue.popleft()
+        nodes_expanded += 1
         for neighbor, move_name in get_neighbors_with_moves(current):
             if neighbor not in visited:
                 parent[neighbor] = (current, move_name)
                 if neighbor == goal:
+                    end_time = time.time()
                     path = []
                     state = neighbor
                     while state is not None:
@@ -62,7 +67,12 @@ def bfs(start, goal):
                         path.append((state, m))
                         state = p
                     path.reverse()
-                    return path
+                    solution_length = len(path) - 1
+                    time_elapsed = end_time - start_time
+                    return path, nodes_expanded, solution_length, time_elapsed
                 visited.add(neighbor)
                 queue.append(neighbor)
-    return None
+
+    end_time = time.time()
+    # Si no encuentra solución, retorna None con métricas 0
+    return None, nodes_expanded, 0, end_time - start_time
