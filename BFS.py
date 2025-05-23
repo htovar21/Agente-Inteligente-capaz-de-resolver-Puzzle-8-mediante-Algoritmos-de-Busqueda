@@ -29,10 +29,10 @@ def get_neighbors_with_moves(state):
     row, col = divmod(zero_pos, 3)
 
     moves = []
-    if row > 0: moves.append((-3, "Up"))    # arriba
-    if row < 2: moves.append((3, "Down"))   # abajo
-    if col > 0: moves.append((-1, "Left"))  # izquierda
-    if col < 2: moves.append((1, "Right"))  # derecha
+    if row > 0: moves.append((-3, "Arriba"))    # arriba
+    if row < 2: moves.append((3, "Abajo"))   # abajo
+    if col > 0: moves.append((-1, "Izquierda"))  # izquierda
+    if col < 2: moves.append((1, "Derecha"))  # derecha
 
     for move, move_name in moves:
         new_pos = zero_pos + move
