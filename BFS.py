@@ -21,22 +21,13 @@ def count_inversions(state):
                 inv_count += 1
     return inv_count
 
-def is_solvable(start, goal):
+def generate_random_initial(goal):
     """
-    Determina si un estado inicial es resoluble en base a la paridad
-    del número de inversiones comparado con el estado objetivo.
-    Si ambas paridades coinciden, el puzzle es solucionable.
-    """
-    return count_inversions(start) % 2 == count_inversions(goal) % 2
-
-def generate_solvable_initial(goal):
-    """
-    Genera un estado inicial aleatorio que sea resoluble
-    y diferente al estado objetivo.
+    Genera un estado inicial aleatorio diferente al estado objetivo.
     """
     while True:
         initial = tuple(random.sample(range(9), 9))  # Permutación aleatoria de números 0-8
-        if is_solvable(initial, goal) and initial != goal:
+        if initial != goal:
             return initial
 
 def get_neighbors_with_moves(state):

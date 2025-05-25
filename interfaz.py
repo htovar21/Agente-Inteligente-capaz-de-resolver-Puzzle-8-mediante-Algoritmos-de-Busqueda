@@ -1,257 +1,247 @@
 import pygame
 import sys
-from BFS import goal_state, generate_solvable_initial, bfs
+from BFS import goal_state, generate_random_initial, bfs
 from Astar_Manhattan import astar
 import time
 from tabulate import tabulate
 
-# Inicialización de Pygame y su módulo de fuentes
 pygame.init()
 pygame.font.init()
 
-# Configuración de tamaño de ventana y otros parámetros
-SIZE = WIDTH, HEIGHT = 300, 450
-TILE_SIZE = 90
-FPS = 5  # Frames por segundo para controlar la velocidad del juego
+# Configuración ventana y constantes
+TAMANO = ANCHO, ALTO = 300, 450
+TAM_CASILLA = 90
+FPS = 5
 
-# Configuración de pantalla y título de la ventana
-screen = pygame.display.set_mode(SIZE)
+pantalla = pygame.display.set_mode(TAMANO)
 pygame.display.set_caption("Puzzle 8")
 
-# Fuentes para los textos grandes y pequeños
-font = pygame.font.SysFont(None, 72)
-small_font = pygame.font.SysFont(None, 30)
+# Fuentes para textos grandes y pequeños
+fuente_grande = pygame.font.SysFont(None, 72)
+fuente_pequena = pygame.font.SysFont(None, 30)
 
 # Colores usados en la interfaz
-BG_COLOR = (30, 30, 30)
-TILE_COLOR = (70, 130, 180)
-EMPTY_COLOR = (50, 50, 50)
-TEXT_COLOR = (255, 255, 255)
-BUTTON_COLOR = (100, 100, 100)
-BUTTON_HOVER_COLOR = (150, 150, 150)
+COLOR_FONDO = (30, 30, 30)
+COLOR_CASILLA = (70, 130, 180)
+COLOR_VACIO = (50, 50, 50)
+COLOR_TEXTO = (255, 255, 255)
+COLOR_BOTON = (100, 100, 100)
+COLOR_BOTON_HOVER = (150, 150, 150)
 
-# Rectángulos que definen la posición y tamaño de botones en pantalla
-btn_change = pygame.Rect(30, 370, 100, 50)
-btn_start = pygame.Rect(170, 370, 100, 50)
-btn_restart = pygame.Rect(30, 370, 100, 50)
-btn_astar = pygame.Rect(170, 370, 100, 50)
+# Rectángulos para botones (posición y tamaño)
+boton_cambiar = pygame.Rect(30, 370, 100, 50)
+boton_comenzar = pygame.Rect(170, 370, 100, 50)
+boton_reiniciar = pygame.Rect(30, 370, 100, 50)
+boton_astar = pygame.Rect(170, 370, 100, 50)
 
-# Función para imprimir tabla comparativa en consola entre BFS y A*
-def print_comparison_table(bfs_stats, astar_stats):
-    headers = ["Algoritmo", "Nodos Expandidos", "Longitud Solución", "Tiempo (s)"]
-    data = [
-        ["BFS", bfs_stats[0], bfs_stats[1], f"{bfs_stats[2]:.4f}"],
-        ["A*", astar_stats[0], astar_stats[1], f"{astar_stats[2]:.4f}"],
+def imprimir_tabla_comparativa(estad_bfs, estad_astar):
+    # Muestra por consola una tabla comparativa con resultados de BFS y A*
+    encabezados = ["Algoritmo", "Nodos Expandidos", "Longitud Solución", "Tiempo (s)"]
+    datos = [
+        ["BFS", estad_bfs[0], estad_bfs[1], f"{estad_bfs[2]:.4f}"],
+        ["A*", estad_astar[0], estad_astar[1], f"{estad_astar[2]:.4f}"],
     ]
-    # Usa tabulate para crear una tabla con formato agradable
-    table = tabulate(data, headers, tablefmt="fancy_grid", numalign="right")
-    print("\n" + table + "\n")
+    tabla = tabulate(datos, encabezados, tablefmt="fancy_grid", numalign="right")
+    print("\n" + tabla + "\n")
 
-# Función para dibujar el estado actual del puzzle en la pantalla
-def draw_state(state):
-    screen.fill(BG_COLOR)  # Fondo negro
-    for i, val in enumerate(state):
-        row, col = divmod(i, 3)  # Determinar fila y columna en la grilla 3x3
-        x = col * TILE_SIZE + 15
-        y = row * TILE_SIZE + 50
-        rect = pygame.Rect(x, y, TILE_SIZE - 10, TILE_SIZE - 10)
+def dibujar_estado(estado):
+    # Dibuja el estado actual del puzzle en la pantalla
+    pantalla.fill(COLOR_FONDO)
+    for i, val in enumerate(estado):
+        fila, columna = divmod(i, 3)
+        x = columna * TAM_CASILLA + 15
+        y = fila * TAM_CASILLA + 50
+        rect = pygame.Rect(x, y, TAM_CASILLA - 10, TAM_CASILLA - 10)
 
-        if val == 0:  # Casilla vacía
-            pygame.draw.rect(screen, EMPTY_COLOR, rect)
-        else:  # Casilla con número
-            pygame.draw.rect(screen, TILE_COLOR, rect)
-            text = font.render(str(val), True, TEXT_COLOR)
-            text_rect = text.get_rect(center=rect.center)
-            screen.blit(text, text_rect)
+        if val == 0:
+            pygame.draw.rect(pantalla, COLOR_VACIO, rect)  # Casilla vacía
+        else:
+            pygame.draw.rect(pantalla, COLOR_CASILLA, rect)
+            texto = fuente_grande.render(str(val), True, COLOR_TEXTO)
+            rect_texto = texto.get_rect(center=rect.center)
+            pantalla.blit(texto, rect_texto)
 
-# Dibuja texto centrado en la posición y dada
-def draw_text(text, y):
-    rendered = small_font.render(text, True, TEXT_COLOR)
-    rect = rendered.get_rect(center=(WIDTH // 2, y))
-    screen.blit(rendered, rect)
+def dibujar_texto(texto, y):
+    # Dibuja texto centrado horizontalmente en una posición y vertical dada
+    renderizado = fuente_pequena.render(texto, True, COLOR_TEXTO)
+    rect = renderizado.get_rect(center=(ANCHO // 2, y))
+    pantalla.blit(renderizado, rect)
 
-# Dibuja un botón, cambia color si el mouse está encima
-def draw_button(rect, text, mouse_pos):
-    color = BUTTON_HOVER_COLOR if rect.collidepoint(mouse_pos) else BUTTON_COLOR
-    pygame.draw.rect(screen, color, rect)
-    text_surf = small_font.render(text, True, TEXT_COLOR)
-    text_rect = text_surf.get_rect(center=rect.center)
-    screen.blit(text_surf, text_rect)
+def dibujar_boton(rect, texto, pos_mouse):
+    # Dibuja un botón con cambio de color si el mouse está encima
+    color = COLOR_BOTON_HOVER if rect.collidepoint(pos_mouse) else COLOR_BOTON
+    pygame.draw.rect(pantalla, color, rect)
+    texto_surf = fuente_pequena.render(texto, True, COLOR_TEXTO)
+    rect_texto = texto_surf.get_rect(center=rect.center)
+    pantalla.blit(texto_surf, rect_texto)
 
-# Dibuja una pequeña tabla comparativa de estadísticas dentro de la ventana
-def draw_comparison(bfs_stats, astar_stats):
-    table_width = 320
-    table_height = 120
-    table_x = 20
-    table_y = 120
-    pygame.draw.rect(screen, (60, 60, 60), (table_x, table_y, table_width, table_height), border_radius=10)
+def dibujar_comparacion(estad_bfs, estad_astar):
+    # Dibuja en pantalla la comparación de estadísticas BFS vs A*
+    ancho_tabla = 320
+    alto_tabla = 120
+    pos_x_tabla = 20
+    pos_y_tabla = 120
+    pygame.draw.rect(pantalla, (60, 60, 60), (pos_x_tabla, pos_y_tabla, ancho_tabla, alto_tabla), border_radius=10)
 
-    y_start = table_y + 10
-    line_height = 30
+    y_inicial = pos_y_tabla + 10
+    alto_linea = 30
 
-    # Cabecera y filas con datos
-    header = ["", "Nodos", "  Long.", "   Tiempo"]
-    bfs_row = ["BFS", str(bfs_stats[0]), f"    {bfs_stats[1]}", f"    {bfs_stats[2]:.4f}"]
-    astar_row = ["A*", str(astar_stats[0]), f"    {astar_stats[1]}", f"    {astar_stats[2]:.4f}"]
-    table = [header, bfs_row, astar_row]
+    encabezado = ["", "Nodos", "  Long.", "   Tiempo"]
+    fila_bfs = ["BFS", str(estad_bfs[0]), f"    {estad_bfs[1]}", f"    {estad_bfs[2]:.4f}"]
+    fila_astar = ["A*", str(estad_astar[0]), f"    {estad_astar[1]}", f"    {estad_astar[2]:.4f}"]
+    tabla = [encabezado, fila_bfs, fila_astar]
 
-    # Recorremos cada fila y columna para dibujar el texto
-    for row_index, row in enumerate(table):
-        for col_index, text in enumerate(row):
-            x_pos = table_x + 10 + col_index * 60
-            y_pos = y_start + row_index * line_height
-            rendered = small_font.render(text, True, TEXT_COLOR)
-            screen.blit(rendered, (x_pos, y_pos))
+    for idx_fila, fila in enumerate(tabla):
+        for idx_col, texto in enumerate(fila):
+            x_pos = pos_x_tabla + 10 + idx_col * 60
+            y_pos = y_inicial + idx_fila * alto_linea
+            renderizado = fuente_pequena.render(texto, True, COLOR_TEXTO)
+            pantalla.blit(renderizado, (x_pos, y_pos))
 
-# --- Funciones para manejar estados del juego ---
+def handle_menu(eventos, pos_mouse, estado):
+    # Dibuja estado inicial
+    dibujar_estado(estado["initial_state"])
+    dibujar_texto("Busqueda No Informada BFS", 20)
+    dibujar_texto("Estado inicial", ALTO - 115)
 
-# Estado del menú inicial donde se muestra estado inicial y botones Cambiar y Comenzar
-def handle_menu(events, mouse_pos, state):
-    draw_state(state["initial_state"])
-    draw_text("Busqueda No Informada BFS", 20)
-    draw_text("Estado inicial", HEIGHT - 115)
-    draw_button(btn_change, "Cambiar", mouse_pos)
-    draw_button(btn_start, "Comenzar", mouse_pos)
-    state["comparing"] = False  # Desactivar modo comparación
+    # Mostrar mensaje si no hay solución
+    if estado["no_solution"]:
+        dibujar_texto("No es resoluble", ALTO - 90, )
 
-    for event in events:
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            # Cambiar estado inicial a uno nuevo resolvible
-            if btn_change.collidepoint(event.pos):
-                state["initial_state"] = generate_solvable_initial(goal_state)
-                state["astar_executed"] = False
-                state["comparing"] = False
-                state["bfs_stats"] = None
-                state["astar_stats"] = None
-            # Ejecutar BFS para resolver
-            elif btn_start.collidepoint(event.pos):
-                solution, nodes_exp, sol_len, time_elapsed = bfs(state["initial_state"], goal_state)
-                state["bfs_stats"] = (nodes_exp, sol_len, time_elapsed)
-                state["algorithm"] = "BFS"
-                if solution:
-                    print(f"[BFS] Solución encontrada en {sol_len} pasos.")
-                    state["solution"] = solution
-                    state["step_idx"] = 0
+    dibujar_boton(boton_cambiar, "Cambiar", pos_mouse)
+    dibujar_boton(boton_comenzar, "Comenzar", pos_mouse)
+    estado["comparing"] = False
+
+    # Eventos botón
+    for evento in eventos:
+        if evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
+            if boton_cambiar.collidepoint(evento.pos):
+                estado["initial_state"] = generate_random_initial(goal_state)
+                estado["astar_executed"] = False
+                estado["comparing"] = False
+                estado["bfs_stats"] = None
+                estado["astar_stats"] = None
+                estado["no_solution"] = False
+            elif boton_comenzar.collidepoint(evento.pos):
+                solucion, nodos_exp, long_sol, tiempo = bfs(estado["initial_state"], goal_state)
+                estado["bfs_stats"] = (nodos_exp, long_sol, tiempo)
+                estado["algorithm"] = "BFS"
+                if solucion:
+                    print(f"[BFS] Solución encontrada en {long_sol} pasos.")
+                    estado["solution"] = solucion
+                    estado["step_idx"] = 0
+                    estado["no_solution"] = False
                     return "solving"
                 else:
-                    print("[BFS] No se encontró solución.")
+                    print("No es resoluble")
+                    estado["no_solution"] = True
+    return "menu"
 
-    return "menu"  # Mantener en menú
-
-# Estado donde se muestra la solución paso a paso
-def handle_solving(events, mouse_pos, state):
-    if state["step_idx"] < len(state["solution"]):
-        current_state, move = state["solution"][state["step_idx"]]
-        draw_state(current_state)
-        draw_text(f"Búsqueda {'No Informada BFS' if state['algorithm'] == 'BFS' else 'Informada A*'}", 20)
-        if move:
-            draw_text(f"Movimiento: {move}", HEIGHT - 50)
+def handle_solving(eventos, pos_mouse, estado):
+    # Muestra el progreso de la solución paso a paso
+    if estado["step_idx"] < len(estado["solution"]):
+        estado_actual, movimiento = estado["solution"][estado["step_idx"]]
+        dibujar_estado(estado_actual)
+        dibujar_texto(f"Búsqueda {'No Informada BFS' if estado['algorithm'] == 'BFS' else 'Informada A*'}", 20)
+        if movimiento:
+            dibujar_texto(f"Movimiento: {movimiento}", ALTO - 50)
         else:
-            draw_text("Estado inicial", HEIGHT - 50)
-        state["step_idx"] += 1  # Avanza al siguiente paso
+            dibujar_texto("Estado inicial", ALTO - 50)
+        estado["step_idx"] += 1
         return "solving"
     else:
-        return "finished"  # Finalizó la solución
+        return "finished"
 
-# Estado final, muestra el resultado y permite reiniciar o comparar BFS y A*
-def handle_finished(events, mouse_pos, state):
-    draw_state(state["solution"][-1][0])
-    draw_text(f"Búsqueda {'No Informada BFS' if state['algorithm'] == 'BFS' else 'Informada A*'}", 20)
-    draw_text(f"Estado Meta - {len(state['solution']) - 1} pasos", HEIGHT - 115)
-    draw_button(btn_restart, "Reiniciar", mouse_pos)
+def handle_finished(eventos, pos_mouse, estado):
+    # Pantalla final con opción para reiniciar o comparar BFS con A*
+    dibujar_estado(estado["solution"][-1][0])
+    dibujar_texto(f"Búsqueda {'No Informada BFS' if estado['algorithm'] == 'BFS' else 'Informada A*'}", 20)
+    dibujar_texto(f"Estado Meta - {len(estado['solution']) - 1} pasos", ALTO - 115)
+    dibujar_boton(boton_reiniciar, "Reiniciar", pos_mouse)
 
-    # Mostrar botón A* o Comparar según el estado
-    if state["astar_executed"] and not state["comparing"]:
-        draw_button(btn_astar, "Comparar", mouse_pos)
-    elif not state["astar_executed"]:
-        draw_button(btn_astar, "A*", mouse_pos)
+    if estado["astar_executed"] and not estado["comparing"]:
+        dibujar_boton(boton_astar, "Comparar", pos_mouse)
+    elif not estado["astar_executed"]:
+        dibujar_boton(boton_astar, "A*", pos_mouse)
 
-    # Si está en modo comparación, mostrar tabla
-    if state["comparing"]:
-        draw_comparison(state["bfs_stats"], state["astar_stats"])
+    if estado["comparing"]:
+        dibujar_comparacion(estado["bfs_stats"], estado["astar_stats"])
 
-    for event in events:
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            # Reiniciar el juego
-            if btn_restart.collidepoint(event.pos):
-                state["initial_state"] = generate_solvable_initial(goal_state)
-                state["solution"] = []
-                state["step_idx"] = 0
-                state["astar_executed"] = False
-                state["comparing"] = False
-                state["bfs_stats"] = None
-                state["astar_stats"] = None
+    for evento in eventos:
+        if evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
+            if boton_reiniciar.collidepoint(evento.pos):
+                # Reinicia el juego y estados
+                estado["initial_state"] = generate_random_initial(goal_state)
+                estado["solution"] = []
+                estado["step_idx"] = 0
+                estado["astar_executed"] = False
+                estado["comparing"] = False
+                estado["bfs_stats"] = None
+                estado["astar_stats"] = None
                 return "menu"
 
-            # Ejecutar A* o alternar comparación
-            elif btn_astar.collidepoint(event.pos):
-                if not state["astar_executed"]:
-                    if state["initial_state"]:
-                        result = astar(state["initial_state"], goal_state)
-                        if result:
-                            solution, nodes_exp, sol_len, time_elapsed = result
-                            state["astar_stats"] = (nodes_exp, sol_len, time_elapsed)
-                            state["algorithm"] = "A*"
-                            print(f"[A*] Solución encontrada en {sol_len} pasos.")
-                            state["solution"] = solution
-                            state["step_idx"] = 0
-                            state["astar_executed"] = True
-                            state["comparing"] = False
+            elif boton_astar.collidepoint(evento.pos):
+                # Ejecuta A* o muestra comparación si ya fue ejecutado
+                if not estado["astar_executed"]:
+                    if estado["initial_state"]:
+                        resultado = astar(estado["initial_state"], goal_state)
+                        if resultado:
+                            solucion, nodos_exp, long_sol, tiempo = resultado
+                            estado["astar_stats"] = (nodos_exp, long_sol, tiempo)
+                            estado["algorithm"] = "A*"
+                            print(f"[A*] Solución encontrada en {long_sol} pasos.")
+                            estado["solution"] = solucion
+                            estado["step_idx"] = 0
+                            estado["astar_executed"] = True
+                            estado["comparing"] = False
                             return "solving"
                         else:
                             print("[A*] No se encontró solución.")
                     else:
                         print("⚠️ Debes ejecutar BFS primero para establecer el estado inicial.")
                 else:
-                    if state["bfs_stats"] and state["astar_stats"]:
-                        state["comparing"] = True
-                        print_comparison_table(state["bfs_stats"], state["astar_stats"])
+                    if estado["bfs_stats"] and estado["astar_stats"]:
+                        estado["comparing"] = True
+                        imprimir_tabla_comparativa(estado["bfs_stats"], estado["astar_stats"])
                     else:
-                        print("⚠️ Ejecuta BFS y A* primero para comparar.")
+                        print("⚠️ Ejecuta ambos algoritmos primero para comparar.")
 
     return "finished"
 
-# Función principal donde corre el loop del juego
 def main():
-    clock = pygame.time.Clock()
-
-    # Estado global del juego
-    state = {
-        "initial_state": generate_solvable_initial(goal_state),  # Estado inicial generable
-        "solution": [],            # Lista de estados solución para mostrar
-        "step_idx": 0,             # Índice del paso actual en la solución
-        "mode": "menu",            # Modo actual (menu, solving, finished)
-        "algorithm": "BFS",        # Algoritmo en ejecución
-        "astar_executed": False,   # Flag si se ejecutó A*
-        "bfs_stats": None,         # Estadísticas BFS
-        "astar_stats": None,       # Estadísticas A*
-        "comparing": False,        # Flag si está mostrando comparación
+    reloj = pygame.time.Clock()
+    estado = {
+        "initial_state": generate_random_initial(goal_state),
+        "solution": [],
+        "step_idx": 0,
+        "algorithm": None,
+        "astar_executed": False,
+        "comparing": False,
+        "bfs_stats": None,
+        "astar_stats": None,
+        "no_solution": False,
     }
 
-    # Diccionario que mapea modos con funciones manejadoras
-    mode_handlers = {
-        "menu": handle_menu,
-        "solving": handle_solving,
-        "finished": handle_finished,
-    }
+    estado_actual = "menu"
 
-    running = True
-    while running:
-        clock.tick(FPS)  # Controlar FPS
-        mouse_pos = pygame.mouse.get_pos()
-        events = pygame.event.get()
+    while True:
+        eventos = pygame.event.get()
+        pos_mouse = pygame.mouse.get_pos()
 
-        for event in events:
-            if event.type == pygame.QUIT:  # Salir si se cierra ventana
-                running = False
+        for evento in eventos:
+            if evento.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
 
-        # Llama la función que corresponde al modo actual, actualizando el modo
-        state["mode"] = mode_handlers[state["mode"]](events, mouse_pos, state)
+        if estado_actual == "menu":
+            estado_actual = handle_menu(eventos, pos_mouse, estado)
+        elif estado_actual == "solving":
+            estado_actual = handle_solving(eventos, pos_mouse, estado)
+        elif estado_actual == "finished":
+            estado_actual = handle_finished(eventos, pos_mouse, estado)
 
-        pygame.display.flip()  # Actualiza la pantalla
-
-    pygame.quit()
-
+        pygame.display.flip()
+        reloj.tick(FPS)
 
 if __name__ == "__main__":
     main()
