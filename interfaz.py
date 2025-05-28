@@ -46,7 +46,7 @@ def imprimir_tabla_comparativa(estad_bfs, estad_astar):
 
 def dibujar_estado(estado):
     # Dibuja el estado actual del puzzle en la pantalla
-    pantalla.fill(COLOR_FONDO)
+    pantalla.fill(COLOR_FONDO) # Limpia la pantalla con el color de fondo
     for i, val in enumerate(estado):
         fila, columna = divmod(i, 3)
         x = columna * TAM_CASILLA + 15
@@ -56,7 +56,7 @@ def dibujar_estado(estado):
         if val == 0:
             pygame.draw.rect(pantalla, COLOR_VACIO, rect)  # Casilla vacía
         else:
-            pygame.draw.rect(pantalla, COLOR_CASILLA, rect)
+            pygame.draw.rect(pantalla, COLOR_CASILLA, rect) # Casilla con número
             texto = fuente_grande.render(str(val), True, COLOR_TEXTO)
             rect_texto = texto.get_rect(center=rect.center)
             pantalla.blit(texto, rect_texto)
@@ -99,7 +99,7 @@ def dibujar_comparacion(estad_bfs, estad_astar):
             pantalla.blit(renderizado, (x_pos, y_pos))
 
 def handle_menu(eventos, pos_mouse, estado):
-    # Dibuja estado inicial
+    # Dibuja el estado inicial y muestra los botones principales
     dibujar_estado(estado["initial_state"])
     dibujar_texto("Busqueda No Informada BFS", 20)
     dibujar_texto("Estado inicial", ALTO - 115)
@@ -112,10 +112,11 @@ def handle_menu(eventos, pos_mouse, estado):
     dibujar_boton(boton_comenzar, "Comenzar", pos_mouse)
     estado["comparing"] = False
 
-    # Eventos botón
+    # Manejo de eventos del menú
     for evento in eventos:
         if evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
             if boton_cambiar.collidepoint(evento.pos):
+                # Genera un nuevo estado inicial aleatorio
                 estado["initial_state"] = generate_random_initial(goal_state)
                 estado["astar_executed"] = False
                 estado["comparing"] = False
@@ -123,6 +124,7 @@ def handle_menu(eventos, pos_mouse, estado):
                 estado["astar_stats"] = None
                 estado["no_solution"] = False
             elif boton_comenzar.collidepoint(evento.pos):
+                # Ejecuta BFS desde el estado inicial
                 solucion, nodos_exp, long_sol, tiempo = bfs(estado["initial_state"], goal_state)
                 estado["bfs_stats"] = (nodos_exp, long_sol, tiempo)
                 estado["algorithm"] = "BFS"
@@ -167,6 +169,7 @@ def handle_finished(eventos, pos_mouse, estado):
     if estado["comparing"]:
         dibujar_comparacion(estado["bfs_stats"], estado["astar_stats"])
 
+    # Eventos en pantalla final
     for evento in eventos:
         if evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
             if boton_reiniciar.collidepoint(evento.pos):
@@ -198,13 +201,14 @@ def handle_finished(eventos, pos_mouse, estado):
                         else:
                             print("[A*] No se encontró solución.")
                     else:
-                        print("⚠️ Debes ejecutar BFS primero para establecer el estado inicial.")
+                        # Si ya se ejecutó A*, mostrar comparación
+                        print(" Debes ejecutar BFS primero para establecer el estado inicial.")
                 else:
                     if estado["bfs_stats"] and estado["astar_stats"]:
                         estado["comparing"] = True
                         imprimir_tabla_comparativa(estado["bfs_stats"], estado["astar_stats"])
                     else:
-                        print("⚠️ Ejecuta ambos algoritmos primero para comparar.")
+                        print(" Ejecuta ambos algoritmos primero para comparar.")
 
     return "finished"
 

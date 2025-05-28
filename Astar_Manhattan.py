@@ -47,6 +47,7 @@ def get_neighbors(state):
         if 0 <= nx < 3 and 0 <= ny < 3:
             new_index = nx * 3 + ny  # Calcula el índice lineal de la nueva posición
             new_state = list(state)  # Convierte la tupla a lista para poder modificarla
+
             # Intercambia el espacio vacío con la ficha en la nueva posición
             new_state[zero_index], new_state[new_index] = new_state[new_index], new_state[zero_index]
             neighbors.append(((tuple(new_state), move)))  # Añade el nuevo estado y movimiento a la lista
@@ -72,8 +73,11 @@ def astar(initial_state, goal_state):
         # Si el estado actual es el objetivo, termina y reconstruye el camino
         if state == goal_state:
             end_time = time.time()  # Tiempo de finalización
+
             solution_path = path + [(state, None)]  # Ruta completa con el estado final
+
             solution_length = len(solution_path) - 1  # Número de movimientos
+            
             time_elapsed = end_time - start_time  # Tiempo total transcurrido
             return solution_path, nodes_expanded, solution_length, time_elapsed
 
