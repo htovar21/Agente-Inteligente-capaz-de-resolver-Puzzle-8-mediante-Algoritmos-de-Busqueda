@@ -8,7 +8,7 @@ Este proyecto es una implementación del clásico **Puzzle de 8** usando `pygame
 ## Características
 
 - Interfaz gráfica intuitiva usando `pygame`.
-- Generación aleatoria de estados iniciales resolubles.
+- Generación aleatoria de estados iniciales.
 - Visualización paso a paso de la solución.
 - Comparación gráfica y por consola de métricas entre BFS y A*:
   - Nodos expandidos
